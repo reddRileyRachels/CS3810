@@ -20,11 +20,17 @@ why the true remaining cost can never be smaller than it.
 def manhattan(a, b):
     """Return the Manhattan distance between two (row, col) positions.
 
-    Note for your admissibility argument: on this grid, the true number of
+     Note for your admissibility argument: onthis grid, the true number of
     moves between two cells is ALWAYS at least their Manhattan distance.
     Obstacles can only force a detour, never a shortcut.
     """
-    raise NotImplementedError("Part 3: implement manhattan")
+    # raise NotImplementedError("Part 3: implement manhattan")
+    ax = a[0]
+    bx = b[0]
+    ay = a[1]
+    by = b[1]
+
+    return abs(ax - bx) + abs(ay - by)
 
 
 def h0(state, problem):
@@ -34,7 +40,9 @@ def h0(state, problem):
     into uniform-cost search, which is your experimental baseline for "what
     does an uninformed optimal search cost?"
     """
-    raise NotImplementedError("Part 3: implement h0")
+    # raise NotImplementedError("Part 3: implement h0")
+
+    return 0
 
 
 def h1(state, problem):
@@ -43,7 +51,9 @@ def h1(state, problem):
     Admissible because each remaining dirty cell needs at least its own
     CLEAN action, and CLEAN costs 1.
     """
-    raise NotImplementedError("Part 3: implement h1")
+    # raise NotImplementedError("Part 3: implement h1")
+    dirty = state[1]
+    return len(dirty)
 
 
 def h2(state, problem):
@@ -56,7 +66,18 @@ def h2(state, problem):
     can clean anything, and reaching the nearest one is the cheapest way to
     do that.
     """
-    raise NotImplementedError("Part 3: implement h2")
+    # raise NotImplementedError("Part 3: implement h2")
+    position = state[0]
+    dirty = state[1]
+    manhattanDistances = []
+
+    if not dirty:
+        return 0
+
+    for cell in dirty:
+        manhattanDistances += [manhattan(position, cell)]
+
+    return h1(state, problem) + min(manhattanDistances)
 
 
 def h3(state, problem):
@@ -81,4 +102,4 @@ def h3(state, problem):
 
 
 # Used by experiments.py and run_tests.py. Do not rename.
-HEURISTICS = {'h0': h0, 'h1': h1, 'h2': h2, 'h3': h3}
+HEURISTICS = {"h0": h0, "h1": h1, "h2": h2, "h3": h3}

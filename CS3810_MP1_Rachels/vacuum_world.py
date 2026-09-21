@@ -184,7 +184,6 @@ class VacuumWorld:
     def __str__(self):
         return self.render()
 
-
 if __name__ == "__main__":
     # Quick manual check once you have implemented the class:
     from test_grids import EXAMPLE, parse_grid

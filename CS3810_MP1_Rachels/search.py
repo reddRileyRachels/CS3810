@@ -34,7 +34,7 @@ from priority_queue import PriorityQueue
 
 # Sentinel used by the IDA* recursion to report success. Returning a plain
 # number means "the smallest f-value I saw above the threshold".
-FOUND = 'FOUND'
+FOUND = "FOUND"
 
 
 def dfs_search(problem):
@@ -60,7 +60,36 @@ def dfs_search(problem):
     Hint: push (state, path_so_far) pairs. Push successors in reversed()
     order if you want the stack to explore them in ACTION_ORDER order.
     """
-    raise NotImplementedError("Part 2a: implement dfs_search")
+
+    # raise NotImplementedError("Part 2a: implement dfs_search")
+    stack = [(problem.initial_state(), [])]
+    visited = set()
+
+    nodesExpanded = 0
+    maxFrontierSize = len(stack)
+
+    while stack:
+        state, path = stack.pop()
+
+        if problem.is_goal(state):
+            return path, nodesExpanded, maxFrontierSize
+
+        if state in visited:
+            continue
+
+        visited.add(state)
+        nodesExpanded += 1
+
+        for action in reversed(problem.get_actions(state)):
+            newState = problem.result(state, action)
+            newPath = path + [action]
+
+            if newState not in visited:
+                stack.append((newState, newPath))
+
+        maxFrontierSize = max(maxFrontierSize, len(stack))
+
+    return None, nodesExpanded, maxFrontierSize
 
 
 def astar_search(problem, heuristic):
@@ -87,7 +116,39 @@ def astar_search(problem, heuristic):
     came_from[state] = (parent_state, action) to rebuild the path at the
     end. A helper like _reconstruct() below keeps the main loop readable.
     """
-    raise NotImplementedError("Part 2b: implement astar_search")
+    # raise NotImplementedError("Part 2b: implement astar_search")
+    pq = PriorityQueue()
+    initialState = problem.initial_state()
+
+    cameFrom = {}
+    g = {initialState: 0}
+
+    pq.push(initialState, heuristic(initialState, problem))
+
+    nodesExpanded = 0
+    maxFrontierSize = len(pq)
+
+    while pq:
+        state = pq.pop()
+
+        if problem.is_goal(state):
+            path = _reconstruct(cameFrom, state)
+            return path, nodesExpanded, maxFrontierSize
+
+        nodesExpanded += 1
+
+        for action in problem.get_actions(state):
+            newState = problem.result(state, action)
+            newG = g[state] + 1
+            if newState not in g or newG < g[newState]:
+                g[newState] = newG
+                priority = newG + heuristic(newState, problem)
+                pq.push(newState, priority)
+                cameFrom[newState] = (state, action)
+
+        maxFrontierSize = max(maxFrontierSize, len(pq))
+
+    return None, nodesExpanded, maxFrontierSize
 
 
 def _reconstruct(came_from, state):
@@ -100,7 +161,17 @@ def _reconstruct(came_from, state):
     Returns:
         List of actions from the initial state to `state`.
     """
-    raise NotImplementedError("Part 2b: implement _reconstruct (optional helper)")
+    # raise NotImplementedError("Part 2b: implement _reconstruct (optional helper)")
+
+    path = []
+
+    while state in came_from:
+        cameFrom, action = came_from[state]
+        path.append(action)
+        state = cameFrom
+
+    path.reverse()
+    return path
 
 
 def idastar_search(problem, heuristic):
