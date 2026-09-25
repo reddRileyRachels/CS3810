@@ -207,7 +207,50 @@ def idastar_search(problem, heuristic):
     where search(state, g, threshold) returns FOUND, or the smallest
     f-value it saw that exceeded the threshold, or math.inf.
     """
-    raise NotImplementedError("Part 2c: implement idastar_search")
+    # raise NotImplementedError("Part 2c: implement idastar_search")
+    initialState = problem.initial_state()
+    threshold = heuristic(initialState, problem)
+
+    nodesExpanded = 0
+    iterations = 0
+
+    while True:
+        iterations += 1
+
+        stack = [(initialState, 0, [], {initialState})]
+        nextThreshold = None
+
+        while stack:
+            state, g, path, pathStates = stack.pop()
+
+            f = g + heuristic(state, problem)
+
+            if f > threshold:
+                if nextThreshold is None or f < nextThreshold:
+                    nextThreshold = f
+                continue
+
+            if problem.is_goal(state):
+                return path, nodesExpanded, iterations
+
+            nodesExpanded += 1
+
+            for action in reversed(problem.get_actions(state)):
+                newState = problem.result(state, action)
+
+                if newState in pathStates:
+                    continue
+
+                newPath = path + [action]
+                newPathStates = pathStates | {newState}
+
+                stack.append((newState, g + 1, newPath, newPathStates))
+
+        # No value exceeded the threshold, so there is no solution.
+        if nextThreshold is None:
+            return None, nodesExpanded, iterations
+
+        threshold = nextThreshold
 
 
 if __name__ == "__main__":

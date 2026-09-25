@@ -35,18 +35,27 @@ import time
 from test_grids import GRIDS, EXAMPLE, parse_grid
 
 # Every combination the harness will try.
-ALGORITHMS = ['dfs', 'astar', 'idastar']
-HEURISTIC_NAMES = ['h0', 'h1', 'h2', 'h3']
+ALGORITHMS = ["dfs", "astar", "idastar"]
+HEURISTIC_NAMES = ["h0", "h1", "h2", "h3"]
 
 # DFS ignores the heuristic, so it is run once per grid with this label.
-NO_HEURISTIC = '-'
+NO_HEURISTIC = "-"
 
-QUICK_GRIDS = ['g1_tiny', 'g2_open', 'g3_blocks']
+QUICK_GRIDS = ["g1_tiny", "g2_open", "g3_blocks"]
 
 CSV_FIELDS = [
-    'grid', 'rows', 'cols', 'n_dirty',
-    'algorithm', 'heuristic', 'status',
-    'cost', 'nodes_expanded', 'max_frontier', 'iterations', 'seconds',
+    "grid",
+    "rows",
+    "cols",
+    "n_dirty",
+    "algorithm",
+    "heuristic",
+    "status",
+    "cost",
+    "nodes_expanded",
+    "max_frontier",
+    "iterations",
+    "seconds",
 ]
 
 
@@ -54,10 +63,12 @@ CSV_FIELDS = [
 # Running one configuration
 # ---------------------------------------------------------------------------
 
+
 def build_problem(grid_name):
     """Construct a VacuumWorld for a named grid."""
     from vacuum_world import VacuumWorld
-    art = EXAMPLE if grid_name == 'example' else GRIDS[grid_name]
+
+    art = EXAMPLE if grid_name == "example" else GRIDS[grid_name]
     grid, start, dirty = parse_grid(art)
     return VacuumWorld(grid, start, dirty)
 
@@ -70,13 +81,13 @@ def run_single(algorithm, grid_name, heuristic_name):
     problem = build_problem(grid_name)
     started = time.perf_counter()
 
-    if algorithm == 'dfs':
+    if algorithm == "dfs":
         plan, expanded, frontier = dfs_search(problem)
         iterations = None
-    elif algorithm == 'astar':
+    elif algorithm == "astar":
         plan, expanded, frontier = astar_search(problem, HEURISTICS[heuristic_name])
         iterations = None
-    elif algorithm == 'idastar':
+    elif algorithm == "idastar":
         plan, expanded, iterations = idastar_search(problem, HEURISTICS[heuristic_name])
         frontier = None
     else:
@@ -85,12 +96,12 @@ def run_single(algorithm, grid_name, heuristic_name):
     elapsed = time.perf_counter() - started
 
     return {
-        'status': 'ok',
-        'cost': None if plan is None else len(plan),
-        'nodes_expanded': expanded,
-        'max_frontier': frontier,
-        'iterations': iterations,
-        'seconds': round(elapsed, 4),
+        "status": "ok",
+        "cost": None if plan is None else len(plan),
+        "nodes_expanded": expanded,
+        "max_frontier": frontier,
+        "iterations": iterations,
+        "seconds": round(elapsed, 4),
     }
 
 
@@ -98,24 +109,23 @@ def _worker(out, algorithm, grid_name, heuristic_name):
     """Subprocess entry point. Puts (status, payload) on the queue."""
     sys.setrecursionlimit(100000)
     try:
-        out.put(('ok', run_single(algorithm, grid_name, heuristic_name)))
+        out.put(("ok", run_single(algorithm, grid_name, heuristic_name)))
     except NotImplementedError as exc:
-        out.put(('skip', str(exc)))
+        out.put(("skip", str(exc)))
     except Exception as exc:  # noqa: BLE001 - report anything the student hits
-        out.put(('error', '%s: %s' % (type(exc).__name__, exc)))
+        out.put(("error", "%s: %s" % (type(exc).__name__, exc)))
 
 
 def run_with_timeout(algorithm, grid_name, heuristic_name, timeout):
     """Run one configuration in a subprocess, killing it after `timeout` seconds."""
     out = mp.Queue()
-    proc = mp.Process(target=_worker,
-                      args=(out, algorithm, grid_name, heuristic_name))
+    proc = mp.Process(target=_worker, args=(out, algorithm, grid_name, heuristic_name))
     started = time.perf_counter()
     proc.start()
     try:
         status, payload = out.get(timeout=timeout)
     except queue_mod.Empty:
-        status, payload = 'timeout', None
+        status, payload = "timeout", None
     finally:
         if proc.is_alive():
             proc.terminate()
@@ -123,70 +133,95 @@ def run_with_timeout(algorithm, grid_name, heuristic_name, timeout):
 
     elapsed = round(time.perf_counter() - started, 4)
 
-    if status == 'ok':
+    if status == "ok":
         return payload
-    if status == 'timeout':
-        return {'status': 'TIMEOUT', 'cost': None, 'nodes_expanded': None,
-                'max_frontier': None, 'iterations': None, 'seconds': elapsed}
-    if status == 'skip':
-        return {'status': 'SKIP', 'cost': None, 'nodes_expanded': None,
-                'max_frontier': None, 'iterations': None, 'seconds': None}
-    return {'status': 'ERROR (%s)' % payload, 'cost': None,
-            'nodes_expanded': None, 'max_frontier': None,
-            'iterations': None, 'seconds': elapsed}
+    if status == "timeout":
+        return {
+            "status": "TIMEOUT",
+            "cost": None,
+            "nodes_expanded": None,
+            "max_frontier": None,
+            "iterations": None,
+            "seconds": elapsed,
+        }
+    if status == "skip":
+        return {
+            "status": "SKIP",
+            "cost": None,
+            "nodes_expanded": None,
+            "max_frontier": None,
+            "iterations": None,
+            "seconds": None,
+        }
+    return {
+        "status": "ERROR (%s)" % payload,
+        "cost": None,
+        "nodes_expanded": None,
+        "max_frontier": None,
+        "iterations": None,
+        "seconds": elapsed,
+    }
 
 
 # ---------------------------------------------------------------------------
 # The full sweep
 # ---------------------------------------------------------------------------
 
+
 def configurations(grid_names):
     """Yield (algorithm, grid, heuristic) triples to measure."""
     for grid_name in grid_names:
-        yield ('dfs', grid_name, NO_HEURISTIC)
-        for algorithm in ('astar', 'idastar'):
+        yield ("dfs", grid_name, NO_HEURISTIC)
+        for algorithm in ("astar", "idastar"):
             for heuristic_name in HEURISTIC_NAMES:
                 yield (algorithm, grid_name, heuristic_name)
 
 
-def sweep(grid_names, timeout, out_path='results.csv'):
+def sweep(grid_names, timeout, out_path="results.csv"):
     """Run every configuration and write results.csv. Returns the rows."""
     rows = []
-    print("%-13s %-8s %-4s %-10s %s" % (
-        'grid', 'algo', 'h', 'status', 'nodes / cost / time'))
-    print('-' * 68)
+    print(
+        "%-13s %-8s %-4s %-10s %s"
+        % ("grid", "algo", "h", "status", "nodes / cost / time")
+    )
+    print("-" * 68)
 
     for algorithm, grid_name, heuristic_name in configurations(grid_names):
-        problem_art = EXAMPLE if grid_name == 'example' else GRIDS[grid_name]
+        problem_art = EXAMPLE if grid_name == "example" else GRIDS[grid_name]
         grid, _, dirty = parse_grid(problem_art)
 
         result = run_with_timeout(algorithm, grid_name, heuristic_name, timeout)
         row = {
-            'grid': grid_name,
-            'rows': len(grid),
-            'cols': len(grid[0]),
-            'n_dirty': len(dirty),
-            'algorithm': algorithm,
-            'heuristic': heuristic_name,
+            "grid": grid_name,
+            "rows": len(grid),
+            "cols": len(grid[0]),
+            "n_dirty": len(dirty),
+            "algorithm": algorithm,
+            "heuristic": heuristic_name,
         }
         row.update(result)
         rows.append(row)
 
-        if result['status'] == 'ok':
+        if result["status"] == "ok":
             detail = "%s nodes, cost %s, %.2fs" % (
-                result['nodes_expanded'], result['cost'], result['seconds'])
+                result["nodes_expanded"],
+                result["cost"],
+                result["seconds"],
+            )
         else:
-            detail = ''
-        print("%-13s %-8s %-4s %-10s %s" % (
-            grid_name, algorithm, heuristic_name, result['status'], detail))
+            detail = ""
+        print(
+            "%-13s %-8s %-4s %-10s %s"
+            % (grid_name, algorithm, heuristic_name, result["status"], detail)
+        )
 
-    with open(out_path, 'w', newline='') as handle:
+    with open(out_path, "w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS)
         writer.writeheader()
         for row in rows:
             writer.writerow({key: row.get(key) for key in CSV_FIELDS})
 
-    print('-' * 68)
+    print("-" * 68)
     print("wrote %d rows to %s" % (len(rows), out_path))
     return rows
 
@@ -194,6 +229,7 @@ def sweep(grid_names, timeout, out_path='results.csv'):
 # ---------------------------------------------------------------------------
 # YOUR WORK STARTS HERE
 # ---------------------------------------------------------------------------
+
 
 def make_table(rows):
     """TODO: build the results table for your report.
@@ -206,7 +242,35 @@ def make_table(rows):
     pandas.DataFrame(rows) and .pivot_table() will do most of the work, or
     write it out by hand - either is fine.
     """
-    raise NotImplementedError("Part 4: build your results table")
+    # raise NotImplementedError("Part 4: build your results table")
+    import pandas as pd
+
+    df = pd.DataFrame(rows)
+
+    table = df[
+        [
+            "grid",
+            "algorithm",
+            "heuristic",
+            "status",
+            "cost",
+            "nodes_expanded",
+            "max_frontier",
+            "iterations",
+            "seconds",
+        ]
+    ].copy()
+
+    table["cost"] = table["cost"].fillna("-")
+    table["nodes_expanded"] = table["nodes_expanded"].fillna("-")
+    table["max_frontier"] = table["max_frontier"].fillna("-")
+    table["iterations"] = table["iterations"].fillna("-")
+    table["seconds"] = table["seconds"].fillna("-")
+
+    print("\nRESULTS TABLE")
+    print(table.to_string(index=False))
+
+    return table
 
 
 def plot_scaling(rows):
@@ -218,7 +282,65 @@ def plot_scaling(rows):
 
     Save to figures/scaling.png.
     """
-    raise NotImplementedError("Part 4: plot nodes expanded vs. problem size")
+    # raise NotImplementedError("Part 4: plot nodes expanded vs. problem size")
+    import os
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    os.makedirs("figures", exist_ok=True)
+
+    df = pd.DataFrame(rows)
+
+    plot_df = df[
+        (df["algorithm"] == "dfs")
+        | (df["algorithm"].isin(["astar", "idastar"]) & (df["heuristic"] == "h2"))
+    ].copy()
+
+    plot_df["nodes_expanded"] = pd.to_numeric(
+        plot_df["nodes_expanded"], errors="coerce"
+    )
+
+    plot_df["n_dirty"] = pd.to_numeric(plot_df["n_dirty"], errors="coerce")
+
+    plot_df = plot_df.dropna(subset=["nodes_expanded", "n_dirty"])
+
+    plt.figure(figsize=(9, 6))
+
+    styles = {
+        "dfs": ("o", "DFS"),
+        "astar": ("s", "A* (h2)"),
+        "idastar": ("^", "IDA* (h2)"),
+    }
+
+    for algorithm, (marker, label) in styles.items():
+        data = plot_df[plot_df["algorithm"] == algorithm].sort_values("n_dirty")
+
+        if not data.empty:
+            plt.plot(
+                data["n_dirty"],
+                data["nodes_expanded"],
+                marker=marker,
+                linewidth=2,
+                markersize=7,
+                label=label,
+            )
+
+    plt.yscale("log")
+
+    plt.xlabel("Number of dirty cells")
+    plt.ylabel("Nodes expanded (log scale)")
+    plt.title("Search Scaling with Problem Size")
+
+    plt.grid(True, which="both", linestyle="--", alpha=0.35)
+
+    plt.legend()
+    plt.tight_layout()
+
+    plt.savefig("figures/scaling.png", dpi=200)
+
+    plt.close()
+
+    print("saved figures/scaling.png")
 
 
 def plot_heuristics(rows):
@@ -230,23 +352,94 @@ def plot_heuristics(rows):
 
     Save to figures/heuristics.png.
     """
-    raise NotImplementedError("Part 4: plot the effect of the heuristic")
+    # raise NotImplementedError("Part 4: plot the effect of the heuristic")
+    import os
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    os.makedirs("figures", exist_ok=True)
+
+    df = pd.DataFrame(rows)
+
+    # Only use A* results.
+    plot_df = df[df["algorithm"] == "astar"].copy()
+
+    # Convert node counts to numbers.
+    plot_df["nodes_expanded"] = pd.to_numeric(
+        plot_df["nodes_expanded"], errors="coerce"
+    )
+
+    # Remove TIMEOUT/SKIP rows.
+    plot_df = plot_df.dropna(subset=["nodes_expanded"])
+
+    if plot_df.empty:
+        print("No A* results available for heuristic plot.")
+        return
+
+    # Keep heuristics in order.
+    heuristic_order = ["h0", "h1", "h2", "h3"]
+
+    available_heuristics = [
+        h for h in heuristic_order if h in plot_df["heuristic"].unique()
+    ]
+
+    # Create grid x heuristic table.
+    pivot = plot_df.pivot_table(
+        index="grid", columns="heuristic", values="nodes_expanded", aggfunc="first"
+    )
+
+    pivot = pivot.reindex(columns=available_heuristics)
+
+    ax = pivot.plot(kind="bar", figsize=(10, 6), width=0.8)
+
+    # Log scale shows large differences clearly.
+    ax.set_yscale("log")
+
+    ax.set_xlabel("Grid")
+    ax.set_ylabel("A* nodes expanded (log scale)")
+    ax.set_title("Effect of Heuristic on A* Search")
+
+    ax.grid(True, axis="y", which="both", linestyle="--", alpha=0.35)
+
+    ax.legend(title="Heuristic")
+
+    plt.xticks(rotation=30, ha="right")
+
+    plt.tight_layout()
+
+    plt.savefig("figures/heuristics.png", dpi=200)
+
+    plt.close()
+
+    print("saved figures/heuristics.png")
 
 
 # ---------------------------------------------------------------------------
 
+
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split('\n')[2])
-    parser.add_argument('--timeout', type=float, default=60.0,
-                        help="seconds per configuration (default: 60)")
-    parser.add_argument('--quick', action='store_true',
-                        help="only the three smallest grids")
-    parser.add_argument('--grids', nargs='+', metavar='NAME',
-                        help="specific grids to run (default: all six)")
-    parser.add_argument('--out', default='results.csv',
-                        help="where to write the raw results")
-    parser.add_argument('--analyze', action='store_true',
-                        help="also run your table and plot functions")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[2])
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="seconds per configuration (default: 60)",
+    )
+    parser.add_argument(
+        "--quick", action="store_true", help="only the three smallest grids"
+    )
+    parser.add_argument(
+        "--grids",
+        nargs="+",
+        metavar="NAME",
+        help="specific grids to run (default: all six)",
+    )
+    parser.add_argument(
+        "--out", default="results.csv", help="where to write the raw results"
+    )
+    parser.add_argument(
+        "--analyze", action="store_true", help="also run your table and plot functions"
+    )
     return parser.parse_args(argv)
 
 
@@ -260,10 +453,10 @@ def main(argv=None):
     else:
         grid_names = list(GRIDS)
 
-    unknown = [g for g in grid_names if g != 'example' and g not in GRIDS]
+    unknown = [g for g in grid_names if g != "example" and g not in GRIDS]
     if unknown:
-        print("unknown grid(s): %s" % ', '.join(unknown))
-        print("available: example, %s" % ', '.join(GRIDS))
+        print("unknown grid(s): %s" % ", ".join(unknown))
+        print("available: example, %s" % ", ".join(GRIDS))
         return 2
 
     rows = sweep(grid_names, args.timeout, args.out)

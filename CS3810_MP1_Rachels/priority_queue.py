@@ -65,7 +65,7 @@ class PriorityQueue:
             if item is not None:
                 del self.entry_finder[item]
                 return item
-        raise KeyError('pop from empty priority queue')
+        raise KeyError("pop from empty priority queue")
 
     def __contains__(self, item):
         return item in self.entry_finder

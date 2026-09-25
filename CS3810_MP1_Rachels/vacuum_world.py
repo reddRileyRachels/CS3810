@@ -33,7 +33,6 @@ DELTAS = {
     "MOVE_RIGHT": (0, 1),
 }
 
-
 class VacuumWorld:
     """A vacuum-cleaning robot problem on a rectangular grid."""
 
